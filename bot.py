@@ -98,9 +98,9 @@ class BinanceBot:
             )
         )
         fr["funding_time"] = pd.to_datetime(fr["funding_time"], unit="ms")
-        fr["funding_time"] = fr["funding_time"].dt.strftime("%Y-%m-%d %H:00")
+        fr["funding_time"] = fr["funding_time"].dt.tz_localize("UTC").dt.tz_convert("America/Mexico_City").dt.strftime("%Y-%m-%d %H:00")
         fr["funding_rate"] = fr["funding_rate"].astype(float)
-        fr.sort_values("funding_time", ascending=False).head(20)
+        fr = fr.sort_values("funding_time", ascending=False)
         return fr
 
     def get_funding_arbitrage(self, leverage, entry_market=False, exit_market=True):
@@ -120,9 +120,9 @@ class BinanceBot:
         return base
 
     def get_positions(self, reduced_cols=False):
-        positions = pd.DataFrame(self.client.get_position_risk())
-        positions["side"] = positions["positionAmt"].apply(lambda x: "LONG" if float(x) > 0 else "SHORT")
-        positions["unRealizedProfit"] = positions["unRealizedProfit"].astype(float).round(2)
-        positions["isolatedWallet"] = positions["isolatedWallet"].astype(float).round(2)
-        cols = ["symbol", "side", "entryPrice", "unRealizedProfit", "isolatedWallet", "markPrice"]
+        positions = pd.DataFrame(map(lambda x: x.model_dump(), self.client.rest_api.position_information_v3().data()))
+        positions["side"] = positions["position_amt"].apply(lambda x: "LONG" if float(x) > 0 else "SHORT")
+        positions["un_realized_profit"] = positions["un_realized_profit"].astype(float).round(2)
+        positions["isolated_wallet"] = positions["isolated_wallet"].astype(float).round(2)
+        cols = ["symbol", "side", "entry_price", "un_realized_profit", "isolated_wallet", "mark_price"]
         return positions[cols] if reduced_cols else positions
