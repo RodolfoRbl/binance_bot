@@ -1,0 +1,4 @@
+ipykernel
+pandas
+python-dotenv
+binance-sdk-derivatives-trading-usds-futures
