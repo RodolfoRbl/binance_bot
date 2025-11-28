@@ -99,6 +99,7 @@ class BinanceBot:
         )
         fr["funding_time"] = pd.to_datetime(fr["funding_time"], unit="ms")
         fr["funding_time"] = fr["funding_time"].dt.strftime("%Y-%m-%d %H:00")
+        fr["funding_rate"] = fr["funding_rate"].astype(float)
         fr.sort_values("funding_time", ascending=False).head(20)
         return fr
 
