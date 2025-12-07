@@ -129,7 +129,7 @@ class BinanceBot:
         cols = ["symbol", "side", "entry_price", "un_realized_profit", "isolated_wallet", "mark_price"]
         return positions[cols] if reduced_cols else positions
 
-    def create_scaled_trailing_stop_order(
+    def create_trailing_stop_order(
         self,
         symbol: str,
         side: str,
@@ -137,11 +137,12 @@ class BinanceBot:
         activation_price: float,
         callback_rate: float,
         reduce_only: bool = False,
+        decimals: int = 2,
     ):
         """
         Create a scaled trailing stop order.
         """
-        quantity = round(size_usd / activation_price, 2)
+        quantity = round(size_usd / activation_price, decimals)
         order = self.client.rest_api.new_order(
             symbol=symbol,
             side=side,
@@ -166,3 +167,21 @@ class BinanceBot:
         for ord_i in curr_trl_ords:
             print(f"Cancelling order ID: {ord_i}")
             self.client.rest_api.cancel_order(symbol=symbol, order_id=ord_i)
+
+    def create_scaled_trailing_orders(self, symbol, side, size_usd, start_price, diff, num_orders, callback_rate, reduce_only=False, decimals=2):
+        prices = [start_price - diff * (ix) for ix in range(num_orders)]
+        results = []
+        print(f"Creating {num_orders} trailing stop orders for {symbol}")
+        print("Prices:", prices)
+        for price_i in prices:
+            r = self.create_trailing_stop_order(
+                symbol=symbol,
+                side=side,
+                size_usd=size_usd,
+                activation_price=price_i,
+                callback_rate=callback_rate,
+                reduce_only=reduce_only,
+                decimals=decimals,
+            )
+            results.append(r)
+        return results
