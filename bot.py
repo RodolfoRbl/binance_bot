@@ -98,7 +98,9 @@ class BinanceBot:
             )
         )
         fr["funding_time"] = pd.to_datetime(fr["funding_time"], unit="ms")
-        fr["funding_time"] = fr["funding_time"].dt.tz_localize("UTC").dt.tz_convert("America/Mexico_City").dt.strftime("%Y-%m-%d %H:00")
+        fr["funding_time"] = (
+            fr["funding_time"].dt.tz_localize("UTC").dt.tz_convert("America/Mexico_City").dt.strftime("%Y-%m-%d %H:00")
+        )
         fr["funding_rate"] = fr["funding_rate"].astype(float)
         fr = fr.sort_values("funding_time", ascending=False)
         return fr
@@ -126,3 +128,41 @@ class BinanceBot:
         positions["isolated_wallet"] = positions["isolated_wallet"].astype(float).round(2)
         cols = ["symbol", "side", "entry_price", "un_realized_profit", "isolated_wallet", "mark_price"]
         return positions[cols] if reduced_cols else positions
+
+    def create_scaled_trailing_stop_order(
+        self,
+        symbol: str,
+        side: str,
+        size_usd: float,
+        activation_price: float,
+        callback_rate: float,
+        reduce_only: bool = False,
+    ):
+        """
+        Create a scaled trailing stop order.
+        """
+        quantity = round(size_usd / activation_price, 2)
+        order = self.client.rest_api.new_order(
+            symbol=symbol,
+            side=side,
+            type="TRAILING_STOP_MARKET",
+            quantity=quantity,
+            activation_price=activation_price,
+            callback_rate=callback_rate,
+            reduce_only=reduce_only,
+        ).data()
+        return order.model_dump()
+
+    def cancel_all_trailing_stop_orders(self, symbol: str):
+        """
+        Cancel all trailing stop orders for a given symbol.
+        """
+
+        # Get first only trailing stop orders
+        curr_trl_ords = self.client.rest_api.current_all_open_orders(symbol=symbol).data()
+        curr_trl_ords = [i.model_dump() for i in curr_trl_ords]
+        curr_trl_ords = [i["order_id"] for i in curr_trl_ords if i["type"] == "TRAILING_STOP_MARKET"]
+        print(f"Found {len(curr_trl_ords)} trailing stop orders to cancel.")
+        for ord_i in curr_trl_ords:
+            print(f"Cancelling order ID: {ord_i}")
+            self.client.rest_api.cancel_order(symbol=symbol, order_id=ord_i)
